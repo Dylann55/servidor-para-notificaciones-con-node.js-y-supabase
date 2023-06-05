@@ -12,7 +12,7 @@ const supabaseAnonKey2 = process.env.supabaseKey2;
 async function connect() {
   try {
     const supabase1 = createClient(supabaseUrl1, supabaseAnonKey1);
-    const { data, error1 } = await supabase1.from('etiqueta').select();
+    const { data, error1 } = await supabase1.from('status').select();
     console.log('error: %o',error1)
     console.log('data: %o',data)
     if (data!=null) {
@@ -25,7 +25,7 @@ async function connect() {
 
   try {
     const supabase2 = createClient(supabaseUrl2, supabaseAnonKey2);
-    const { data, error2 } = await supabase2.from('etiqueta').select();
+    const { data, error2 } = await supabase2.from('status').select();
     console.log('error: %o',error2)
     console.log('data: %o',data)
     if (data!=null) {
