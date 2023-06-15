@@ -48,7 +48,8 @@ const transporter = createTransport({
     pass: process.env.EMAIL_PASSWORD,
   },
 });
-
+//pm2 start "nombre_archivo
+//pm2 stop "nombre_archivo"
 app.post("/send-email", async (req, res) => {
   //Verificar si tengo permiso y si el token es correcto
   const authHeader = req.headers.authorization;
@@ -64,65 +65,82 @@ app.post("/send-email", async (req, res) => {
     const { sender, message, messageType } = decoded;
 
     try {
-      // Obtener los registros de la tabla en Supabase con el rol "admin"
-      const supabase = await connect();
-      const { data, error } = await supabase
-        .from("usuarios")
-        .select("correo")
-        .eq("role", "administrador");
 
-      if (error) {
+      const supabase = await connect();
+
+      // Obtener el email del usuario mediante la id
+      const { data: dataUser, error: errorUser } = await supabase
+        .from("usuario")
+        .select("email")
+        .eq("id", sender)
+        .single(); // Utilizar .single() para obtener un solo registro
+
+      if (errorUser) {
         console.error(error);
-        return res
-          .status(500)
-          .send(
-            "Error al obtener los correos electrónicos de los administradores"
-          );
+        return res.status(500).json({ error: 'Error seaching usuario' });
       }
-      console.log(data)
-      // Configurar las opciones del correo electrónico para enviar a los administradores
-      const adminEmails = data.map((row) => row.correo);
+      // Email del usuario
+      const email = dataUser.email;
+
+      // Obtener los registros de la tabla en Supabase con el rol "admin"
+      const { data: adminData, error: adminError } = await supabase
+        .from("usuario")
+        .select("email")
+        .eq("role", "Administrador");
+
+      if (adminError) {
+        console.error(adminError);
+        return res.status(500).json({ error: 'Error seaching usuario' });
+      }
+
+      if (!adminData || adminData.length === 0) {
+        console.log("No se encontraron usuarios administradores");
+        return res.status(404).json({ message: 'No se encontraron usuarios administradores' });
+      }
+
+      // Configurar las opciones del email electrónico para enviar a los administradores
+      const adminEmails = adminData.map((row) => row.email);
       const mailOptions = {
-        from: sender,
+        from: email,
         to: adminEmails.join(", "),
         subject: messageType,
-        text: `De: ${sender}\n\n${message}`,
+        text: `De: ${email}\n\n${message}`,
       };
 
-      // Enviar el correo electrónico
+      // Enviar el email electrónico
       const { error: emailError } = await transporter.sendMail(mailOptions);
       if (emailError) {
         console.error(emailError);
-        return res.status(500).send("Error al enviar el correo electrónico");
+        return res.status(500).send("Error al enviar el email electrónico");
       }
 
-      console.log("Correo electrónico enviado correctamente");
+      console.log("email electrónico enviado correctamente");
 
-      // Configurar las opciones del correo electrónico para enviar al cliente
-      // Enviar correo electrónico al cliente con los correos electrónicos de los administradores
+      // Configurar las opciones del email electrónico para enviar al cliente
+      // Enviar email electrónico al cliente con los correos electrónicos de los administradores
       const clientMailOptions = {
         from: process.env.EMAIL_USER,
-        to: sender,
+        to: email,
         subject: "Correos electrónicos de los administradores",
         text: `Los correos electrónicos de los administradores son: ${adminEmails.join(
           ", "
         )}`,
       };
 
-      // Enviar el correo electrónico al cliente
+      // Enviar el email electrónico al cliente
       const { error: clientEmailError } = await transporter.sendMail(
         clientMailOptions
       );
       if (clientEmailError) {
-        // Mostrar un mensaje de error si ocurre un problema al enviar el correo electrónico al cliente
+        // Mostrar un mensaje de error si ocurre un problema al enviar el email electrónico al cliente
         console.error(clientEmailError);
         return res
           .status(500)
-          .send("Error al enviar el correo electrónico al cliente");
+          .send("Error al enviar el email electrónico al cliente");
       }
 
-      console.log("Correo electrónico enviado correctamente al cliente");
-      res.send("Correo electrónico enviado correctamente");
+      console.log("email electrónico enviado correctamente al cliente");
+      res.send("email electrónico enviado correctamente");
     } catch (error) {
       // Mostrar un mensaje de error si ocurre un problema en el servidor
       console.error(error);
